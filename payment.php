@@ -1,4 +1,5 @@
 <?
+include 'includes/Database.php';
 class Payment {
     private $paymentID;
     private $paymentDate;
