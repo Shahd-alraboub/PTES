@@ -1,3 +1,9 @@
+<?php
+    include_once 'payment';
+    include_once 'include/Database.php';
+
+
+?>
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
