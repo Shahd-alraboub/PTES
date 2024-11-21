@@ -1,3 +1,4 @@
+<?
 class Payment {
     private $paymentID;
     private $paymentDate;
