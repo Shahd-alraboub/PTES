@@ -1,9 +1,3 @@
-<?php
-    include_once 'payment';
-    include_once 'include/Database.php';
-
-
-?>
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -172,7 +166,6 @@
             justify-content: space-between;
             margin-bottom: 10px;
         }
-
         .total {
             font-weight: bold;
             border-top: 2px solid #ddd;
@@ -191,15 +184,12 @@
             <div class="summary-box">
                 <div class="summary-item">
                     <span>قيمة التذكرة:</span>
-                    <span>200 ريال</span>
+                    <span>200 دينار </span>
                 </div>
-                <div class="summary-item">
-                    <span>الضريبة:</span>
-                    <span>30 ريال</span>
-                </div>
+               
                 <div class="summary-item total">
                     <span>الإجمالي:</span>
-                    <span>230 ريال</span>
+                    <span>230 دينار </span>
                 </div>
             </div>
 
@@ -255,14 +245,14 @@
                     <tr>
                         <td>#123456</td>
                         <td>2024-11-20</td>
-                        <td>230 ريال</td>
+                        <td>230 دينار </td>
                         <td>سداد</td>
                         <td><span class="status-badge status-success">تم الدفع</span></td>
                     </tr>
                     <tr>
                         <td>#123457</td>
                         <td>2024-11-19</td>
-                        <td>180 ريال</td>
+                        <td>180 دينار </td>
                         <td>موبي كاش</td>
                         <td><span class="status-badge status-pending">قيد المعالجة</span></td>
                     </tr>
@@ -286,7 +276,6 @@
             // هنا يمكن إضافة كود معالجة الدفع
             alert('جاري معالجة عملية الدفع...');
         });
-
         // تنسيق رقم البطاقة
         document.querySelector('input[placeholder="xxxx xxxx xxxx xxxx"]').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\s/g, '');
