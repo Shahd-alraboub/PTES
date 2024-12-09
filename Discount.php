@@ -1,41 +1,50 @@
 <?php
-
-class Discount {
+include "includes/Database.php";
+class Discount
+{
+    private $conn;
     private $userType;
     private $originalPrice;
     private $baseDiscount;
+    private $discountRate;
 
-    public function __construct($userType, $originalPrice, $baseDiscount) {
+    public function __construct($conn, $userType, $originalPrice, $baseDiscount, $discountRate = 0)
+    {
+        $this->conn = $conn;
         $this->userType = $userType;
         $this->originalPrice = $originalPrice;
         $this->baseDiscount = $baseDiscount;
+        $this->discountRate = $discountRate;
     }
 
-    // تطبيق الخصومات الإضافية حسب نوع المستخدم
-    public function calculateFinalDiscount() {
-        $additionalDiscount = 0;
-
-        switch ($this->userType) {
-            case 'vip':
-                $additionalDiscount = 10; // خصم إضافي 10% للمستخدمين VIP
-                break;
-            case 'student':
-                $additionalDiscount = 5; // خصم إضافي 5% للطلاب
-                break;
-            default:
-                $additionalDiscount = 0; // لا خصم إضافي للمستخدمين العاديين
-        }
-
-        return $this->baseDiscount + $additionalDiscount;
+    public function calculateFinalDiscount()
+    {
+        return $this->baseDiscount + $this->discountRate;
     }
 
-    // حساب السعر النهائي بعد الخصم
-    public function calculateFinalPrice() {
+    public function calculateFinalPrice()
+    {
         $totalDiscount = $this->calculateFinalDiscount();
-        $discountAmount = ($totalDiscount / 100) * $this->originalPrice;
-        $finalPrice = $this->originalPrice - $discountAmount;
-
-        return $finalPrice;
+        return $this->originalPrice - ($this->originalPrice * $totalDiscount / 100);
     }
+
+    public function addDiscountToDatabase()
+    {
+        $query = "INSERT INTO discounts (userType, originalPrice, baseDiscount, discountRate, expiryDate) 
+                  VALUES (:userType, :originalPrice, :baseDiscount, :discountRate, DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY))";
+    
+        // Prepare the statement
+        $stmt = $this->conn->prepare($query);
+    
+        // Bind parameters using bindParam
+        $stmt->bindParam(':userType', $this->userType);
+        $stmt->bindParam(':originalPrice', $this->originalPrice);
+        $stmt->bindParam(':baseDiscount', $this->baseDiscount);
+        $stmt->bindParam(':discountRate', $this->discountRate);
+    
+        // Execute the statement and return the result
+        return $stmt->execute();
+    }
+    
 }
 ?>

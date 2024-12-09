@@ -1,131 +1,178 @@
-<?
-include 'includes/Database.php';
+<?php
+// include 'includes/Database.php';
+
 class Payment {
     private $paymentID;
     private $paymentDate;
     private $ticketID;
     private $amount;
     private $paymentType;
-    private $conn; // database connection
+    private $conn;
 
     public function __construct($dbConnection) {
         $this->conn = $dbConnection;
         $this->paymentDate = date('Y-m-d');
     }
 
+    /**
+     * تعيين تفاصيل الدفع
+     */
     public function setPaymentDetails($ticketID, $amount, $paymentType) {
         $this->ticketID = $ticketID;
         $this->amount = $amount;
         $this->paymentType = $paymentType;
     }
 
-    public function processPayment() {
+    /**
+     * إضافة دفعة جديدة
+     */
+    public function addPayment() {
         try {
-            // التحقق من صحة نوع الدفع
-            if (!in_array($this->paymentType, ['Sadad', 'MobiCash', 'LocalCard'])) {
-                throw new Exception("طريقة دفع غير صالحة");
+            if (!$this->validatePayment()) {
+                throw new Exception("بيانات الدفع غير صالحة");
             }
 
-            // إدخال بيانات الدفع في قاعدة البيانات
-            $sql = "INSERT INTO Payments (paymentDate, ticketID, amount, paymentType) 
-                    VALUES (?, ?, ?, ?)";
+            $sql = "INSERT INTO payments (paymentDate, ticketID, amount, paymentType) 
+                    VALUES (:paymentDate, :ticketID, :amount, :paymentType)";
             
+            // تحضير الاستعلام باستخدام PDO
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("sids", 
-                $this->paymentDate, 
-                $this->ticketID, 
-                $this->amount, 
-                $this->paymentType
-            );
-
+            
+            // ربط القيم بالمعاملات باستخدام bindValue
+            $stmt->bindValue(':paymentDate', $this->paymentDate, PDO::PARAM_STR);
+            $stmt->bindValue(':ticketID', $this->ticketID, PDO::PARAM_INT);
+            $stmt->bindValue(':amount', $this->amount, PDO::PARAM_INT);
+            $stmt->bindValue(':paymentType', $this->paymentType, PDO::PARAM_STR);
+            
+            // تنفيذ الاستعلام
             if ($stmt->execute()) {
-                $this->paymentID = $stmt->insert_id;
+                $this->paymentID = $this->conn->lastInsertId(); // استخدام lastInsertId() للحصول على ID المدفوعات الجديد
                 return true;
             }
             return false;
         } catch (Exception $e) {
-            throw new Exception("فشل في معالجة الدفع: " . $e->getMessage());
+            throw new Exception("فشل في إضافة الدفع: " . $e->getMessage());
         }
     }
 
-    public function refundPayment($paymentID) {
-        try {
-            // التحقق من وجود الدفع
-            $sql = "SELECT * FROM Payments WHERE paymentID = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $paymentID);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result->num_rows === 0) {
-                throw new Exception("لم يتم العثور على الدفع");
-            }
-
-            // التحقق من إمكانية استرداد التذكرة
-            $payment = $result->fetch_assoc();
-            $sql = "SELECT isRefundable FROM Tickets WHERE ticketID = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $payment['ticketID']);
-            $stmt->execute();
-            $ticketResult = $stmt->get_result();
-            $ticket = $ticketResult->fetch_assoc();
-
-            if (!$ticket['isRefundable']) {
-                throw new Exception("التذكرة غير قابلة للاسترداد");
-            }
-
-            // تنفيذ عملية الاسترداد
-            // هنا يمكن إضافة المنطق الخاص بإعادة المبلغ للعميل
-            
-            return true;
-        } catch (Exception $e) {
-            throw new Exception("فشل في استرداد المبلغ: " . $e->getMessage());
+    /**
+     * التحقق من صحة بيانات الدفع
+     */
+    private function validatePayment() {
+        if (!is_numeric($this->amount) || $this->amount <= 0) {
+            return false;
         }
+
+        if (!in_array($this->paymentType, ['Sadad', 'MobiCash', 'LocalCard'])) {
+            return false;
+        }
+
+        if (!is_numeric($this->ticketID) || $this->ticketID <= 0) {
+            return false;
+        }
+
+        return true;
     }
 
+    /**
+     * جلب تفاصيل دفعة محددة
+     */
     public function getPaymentDetails($paymentID) {
         try {
-            $sql = "SELECT p.*, t.seatNumber, e.title as eventTitle 
-                    FROM Payments p 
-                    JOIN Tickets t ON p.ticketID = t.ticketID 
-                    JOIN Events e ON t.eventID = e.eventID 
-                    WHERE p.paymentID = ?";
-            
+            $sql = "SELECT * FROM payments WHERE paymentID = :paymentID";
             $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $paymentID);
+            $stmt->bindValue(':paymentID', $paymentID, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->get_result();
 
-            if ($result->num_rows === 0) {
-                throw new Exception("لم يتم العثور على تفاصيل الدفع");
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("لم يتم العثور على الدفعة");
             }
 
-            return $result->fetch_assoc();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            throw new Exception("فشل في استرجاع تفاصيل الدفع: " . $e->getMessage());
+            throw new Exception("فشل في جلب تفاصيل الدفعة: " . $e->getMessage());
         }
     }
 
-    public function validatePaymentAmount($amount) {
-        return is_numeric($amount) && $amount > 0;
+    /**
+     * جلب جميع الدفعات
+     */
+    public function getAllPayments() {
+        try {
+            $sql = "SELECT * FROM payments ORDER BY paymentDate DESC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC); // استخدام fetchAll بدلاً من fetch_all
+        } catch (Exception $e) {
+            throw new Exception("فشل في جلب الدفعات: " . $e->getMessage());
+        }
     }
 
-    public function generatePaymentReceipt($paymentID) {
+    /**
+     * تحديث بيانات الدفع
+     */
+    public function updatePayment($paymentID, $amount, $paymentType) {
         try {
-            $paymentDetails = $this->getPaymentDetails($paymentID);
-            
-            $receipt = "=== إيصال الدفع ===\n";
-            $receipt .= "رقم الدفع: " . $paymentDetails['paymentID'] . "\n";
-            $receipt .= "تاريخ الدفع: " . $paymentDetails['paymentDate'] . "\n";
-            $receipt .= "المبلغ: " . $paymentDetails['amount'] . " ريال\n";
-            $receipt .= "طريقة الدفع: " . $paymentDetails['paymentType'] . "\n";
-            $receipt .= "الفعالية: " . $paymentDetails['eventTitle'] . "\n";
-            $receipt .= "رقم المقعد: " . $paymentDetails['seatNumber'] . "\n";
-            $receipt .= "==================\n";
+            if (!in_array($paymentType, ['Sadad', 'MobiCash', 'LocalCard']) || !is_numeric($amount) || $amount <= 0) {
+                throw new Exception("بيانات غير صالحة للتحديث");
+            }
 
-            return $receipt;
+            $sql = "UPDATE payments SET amount = :amount, paymentType = :paymentType WHERE paymentID = :paymentID";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':amount', $amount, PDO::PARAM_INT);
+            $stmt->bindValue(':paymentType', $paymentType, PDO::PARAM_STR);
+            $stmt->bindValue(':paymentID', $paymentID, PDO::PARAM_INT);
+
+            return $stmt->execute();
         } catch (Exception $e) {
-            throw new Exception("فشل في إنشاء الإيصال: " . $e->getMessage());
+            throw new Exception("فشل في تحديث الدفعة: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * حذف دفعة
+     */
+    public function deletePayment($paymentID) {
+        try {
+            $sql = "DELETE FROM payments WHERE paymentID = :paymentID";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':paymentID', $paymentID, PDO::PARAM_INT);
+            
+            return $stmt->execute();
+        } catch (Exception $e) {
+            throw new Exception("فشل في حذف الدفعة: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * البحث عن دفعات حسب النوع
+     */
+    public function searchPaymentsByType($paymentType) {
+        try {
+            $sql = "SELECT * FROM payments WHERE paymentType = :paymentType ORDER BY paymentDate DESC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':paymentType', $paymentType, PDO::PARAM_STR);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("فشل في البحث عن الدفعات: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * البحث عن دفعات حسب التاريخ
+     */
+    public function searchPaymentsByDate($startDate, $endDate) {
+        try {
+            $sql = "SELECT * FROM payments WHERE paymentDate BETWEEN :startDate AND :endDate ORDER BY paymentDate DESC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':startDate', $startDate, PDO::PARAM_STR);
+            $stmt->bindValue(':endDate', $endDate, PDO::PARAM_STR);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("فشل في البحث عن الدفعات: " . $e->getMessage());
         }
     }
 }
+?>

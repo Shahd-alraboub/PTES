@@ -1,3 +1,29 @@
+<?php 
+//include "booking/ticket_viwe.php";
+include "payment.php";
+
+// تهيئة الاتصال بقاعدة البيانات
+$database = new Database();
+$conn = $database->getConnection();
+
+// إنشاء كائن الدفع
+$payment = new Payment($conn);
+
+// معالجة عملية تقديم الدفع
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $ticketID = 1; 
+        $amount = 230;
+        $paymentType = $_POST['payment_method'];
+        
+        $payment->setPaymentDetails($ticketID, $amount, $paymentType);
+        $payment->addPayment();
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+}
+
+?>
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -177,127 +203,44 @@
     <div class="container">
         <h1>نظام الدفع</h1>
         
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+
         <!-- نموذج الدفع -->
         <div class="payment-form">
             <h2>إجراء عملية دفع جديدة</h2>
-            
             <div class="summary-box">
                 <div class="summary-item">
                     <span>قيمة التذكرة:</span>
                     <span>200 دينار </span>
                 </div>
-               
                 <div class="summary-item total">
                     <span>الإجمالي:</span>
                     <span>230 دينار </span>
                 </div>
             </div>
-
-            <div class="payment-methods">
-                <div class="payment-method" onclick="selectPaymentMethod(this, 'Sadad')">
-                    <h3>سداد</h3>
-                    <p>الدفع عبر نظام سداد</p>
+            <form method="POST" action="">
+                <div class="payment-methods">
+                    <label>
+                        <input type="radio" name="payment_method" value="Sadad" required>
+                        <span>سداد</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="payment_method" value="MobiCash" required>
+                        <span>موبي كاش</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="payment_method" value="LocalCard" required>
+                        <span>بطاقة محلية</span>
+                    </label>
                 </div>
-                <div class="payment-method" onclick="selectPaymentMethod(this, 'MobiCash')">
-                    <h3>موبي كاش</h3>
-                    <p>الدفع عبر موبي كاش</p>
-                </div>
-                <div class="payment-method" onclick="selectPaymentMethod(this, 'LocalCard')">
-                    <h3>بطاقة محلية</h3>
-                    <p>الدفع ببطاقة مدى</p>
-                </div>
-            </div>
-
-            <form id="paymentForm">
-                <div class="form-group">
-                    <label>رقم البطاقة</label>
-                    <input type="text" placeholder="xxxx xxxx xxxx xxxx" maxlength="19">
-                </div>
-                
-                <div class="form-group">
-                    <label>تاريخ الانتهاء</label>
-                    <input type="text" placeholder="MM/YY" maxlength="5">
-                </div>
-                
-                <div class="form-group">
-                    <label>رمز الأمان CVV</label>
-                    <input type="password" placeholder="***" maxlength="3">
-                </div>
-
                 <button type="submit" class="btn">إتمام عملية الدفع</button>
             </form>
         </div>
 
-        <!-- سجل المدفوعات -->
-        <div class="payment-history">
-            <h2>سجل المدفوعات</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>رقم العملية</th>
-                        <th>التاريخ</th>
-                        <th>المبلغ</th>
-                        <th>طريقة الدفع</th>
-                        <th>الحالة</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>#123456</td>
-                        <td>2024-11-20</td>
-                        <td>230 دينار </td>
-                        <td>سداد</td>
-                        <td><span class="status-badge status-success">تم الدفع</span></td>
-                    </tr>
-                    <tr>
-                        <td>#123457</td>
-                        <td>2024-11-19</td>
-                        <td>180 دينار </td>
-                        <td>موبي كاش</td>
-                        <td><span class="status-badge status-pending">قيد المعالجة</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
-
-    <script>
-        function selectPaymentMethod(element, method) {
-            // إزالة التحديد من جميع الطرق
-            document.querySelectorAll('.payment-method').forEach(el => {
-                el.classList.remove('selected');
-            });
-            // تحديد الطريقة المختارة
-            element.classList.add('selected');
-        }
-
-        document.getElementById('paymentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            // هنا يمكن إضافة كود معالجة الدفع
-            alert('جاري معالجة عملية الدفع...');
-        });
-        // تنسيق رقم البطاقة
-        document.querySelector('input[placeholder="xxxx xxxx xxxx xxxx"]').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '');
-            value = value.replace(/\D/g, '');
-            let newValue = '';
-            for(let i = 0; i < value.length; i++) {
-                if(i > 0 && i % 4 === 0) {
-                    newValue += ' ';
-                }
-                newValue += value[i];
-            }
-            e.target.value = newValue;
-        });
-
-        // تنسيق تاريخ الانتهاء
-        document.querySelector('input[placeholder="MM/YY"]').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if(value.length >= 2) {
-                value = value.substring(0,2) + '/' + value.substring(2);
-            }
-            e.target.value = value;
-        });
-    </script>
 </body>
 </html>

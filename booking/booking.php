@@ -156,5 +156,18 @@ class Booking {
         $updateSeatsStmt->bindParam(":eventID", $eventID, PDO::PARAM_INT);
         return $updateSeatsStmt->execute();
     }
+    public function getLastBookingId()
+    {
+        $query = "SELECT bookingID FROM Bookings WHERE userID = :userID ORDER BY bookingID DESC LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":userID", $this->userID);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row['bookingID'];
+        }
+        return null;
+    }
 }
 ?>

@@ -1,25 +1,27 @@
 <?php
-// تضمين كلاس الخصومات
 include_once 'Discount.php';
 
 $resultMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // استقبال البيانات من النموذج
     $userType = $_POST['userType'];
     $originalPrice = floatval($_POST['originalPrice']);
     $baseDiscount = floatval($_POST['discount']);
 
-    // التحقق من صحة البيانات
     if ($originalPrice > 0 && $baseDiscount >= 0 && $baseDiscount <= 100) {
-        // إنشاء كائن من كلاس الخصومات
-        $discount = new Discount($userType, $originalPrice, $baseDiscount);
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        $discount = new Discount($conn, $userType, $originalPrice, $baseDiscount);
 
-        // حساب الخصومات
         $finalDiscount = $discount->calculateFinalDiscount();
         $finalPrice = $discount->calculateFinalPrice();
 
-        $resultMessage = "المبلغ بعد الخصم ($finalDiscount%): " . number_format($finalPrice, 2) . " ريال";
+        if ($discount->addDiscountToDatabase()) {
+            $resultMessage = "تم إضافة الخصم بنجاح. المبلغ النهائي بعد الخصم ($finalDiscount%): " . number_format($finalPrice, 2) . " دينار";
+        } else {
+            $resultMessage = "فشل في إضافة الخصم إلى قاعدة البيانات.";
+        }
     } else {
         $resultMessage = "يرجى إدخال بيانات صحيحة.";
     }
@@ -98,16 +100,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" action="">
             <label for="userType">نوع المستخدم:</label>
             <select id="userType" name="userType" required>
-                <option value="normal" <?php echo isset($userType) && $userType == 'normal' ? 'selected' : ''; ?>>مستخدم عادي</option>
-                <option value="vip" <?php echo isset($userType) && $userType == 'vip' ? 'selected' : ''; ?>>مستخدم VIP</option>
-                <option value="student" <?php echo isset($userType) && $userType == 'student' ? 'selected' : ''; ?>>طالب</option>
+                <option value="normal">مستخدم عادي</option>
+                <option value="vip">مستخدم VIP</option>
+                <option value="student">طالب</option>
+                <option value="military">عسكري</option>
+                <option value="teacher">معلم</option>
+                <option value="elderly">كبار السن</option>
             </select>
 
             <label for="originalPrice">المبلغ الأصلي:</label>
-            <input type="number" id="originalPrice" name="originalPrice" placeholder="أدخل المبلغ" value="<?php echo isset($originalPrice) ? $originalPrice : ''; ?>" required>
+            <input type="number" id="originalPrice" name="originalPrice" placeholder="أدخل المبلغ" required>
 
-            <label for="discount">الخصم (%):</label>
-            <input type="number" id="discount" name="discount" placeholder="أدخل نسبة الخصم" value="<?php echo isset($baseDiscount) ? $baseDiscount : ''; ?>" required>
+            <label for="discount">الخصم الأساسي (%):</label>
+            <input type="number" id="discount" name="discount" placeholder="أدخل نسبة الخصم" required>
 
             <button type="submit">تطبيق الخصم</button>
         </form>
