@@ -27,7 +27,7 @@ $db = $database->getConnection(); // الحصول على الاتصال
                 <a href="../includes/main.php">الرئيسية</a>
                 <a href="event_viwe.php">الفعاليات</a>   
                 <a href="../booking/ticket_viwe.php">تذاكري</a>
-             
+                <a href="../notifications.php">الاشعارات</a>
             </nav>
         </header>
 
