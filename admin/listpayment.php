@@ -2,7 +2,11 @@
 //include "booking/ticket_viwe.php";
 include "../payment.php";
 <<<<<<< HEAD
+<<<<<<< HEAD
 include"../includes/Database.php";
+=======
+
+>>>>>>> 208a5c0acbfebb04d0b9fe9f95048e0c94cd125b
 =======
 
 >>>>>>> 208a5c0acbfebb04d0b9fe9f95048e0c94cd125b
