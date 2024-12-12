@@ -1,81 +1,11 @@
 <?php
 session_start();
 include 'includes/Database.php';
+include 'Notification.php';
 
 // تهيئة الاتصال بقاعدة البيانات
 $database = new Database();
 $db = $database->getConnection();
-
-// جلب جميع المستخدمين
-// جلب جميع المستخدمين
-$userQuery = "SELECT userID, email FROM users"; // تأكد من أن لديك جدول المستخدمين
-$stmt = $db->prepare($userQuery); // إصلاح السطر هنا
-$stmt->execute();
-$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-// كلاس الإشعارات
-class Notification {
-    private $conn;
-    private $table_name = "notifications";
-
-    public function __construct($db) {
-        $this->conn = $db;
-    }
-
-    // إضافة إشعار جديد
-    public function addNotification($userID, $message) {
-        try {
-            $query = "INSERT INTO " . $this->table_name . " 
-                    (userID, message, created_at) 
-                    VALUES (:user_id, :message, NOW())";
-
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":user_id", $userID);
-            $stmt->bindParam(":message", $message);
-
-            return $stmt->execute();
-        } catch(PDOException $e) {
-            throw new Exception("فشل في إضافة الإشعار: " . $e->getMessage());
-        }
-    }
-
-    // جلب المستخدم من البريد الإلكتروني أو ID
-    public function getUserIDByEmailOrID($identifier) {
-        try {
-            $query = "SELECT userID FROM users WHERE userID = :identifier OR email = :identifier";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':identifier', $identifier);
-            $stmt->execute();
-
-            return $stmt->fetchColumn(); // إرجاع ID المستخدم
-        } catch(PDOException $e) {
-            throw new Exception("فشل في جلب المستخدم: " . $e->getMessage());
-        }
-    }
-
-    // جلب إشعارات مستخدم معين
-    public function getAllNotificationsForUser($userID) {
-        try {
-            $query = "SELECT * FROM " . $this->table_name . " WHERE userID = :userID";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':userID', $userID, PDO::PARAM_INT);
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch(PDOException $e) {
-            throw new Exception("فشل في جلب الإشعارات: " . $e->getMessage());
-        }
-    }
-    // دالة حذف الإشعار
-public function deleteNotification($notificationID) {
-    try {
-        $query = "DELETE FROM " . $this->table_name . " WHERE notificationID = :notificationID";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':notificationID', $notificationID, PDO::PARAM_INT);
-        return $stmt->execute();
-    } catch (PDOException $e) {
-        throw new Exception("فشل في حذف الإشعار: " . $e->getMessage());
-    }
-}
-}
 
 // إنشاء كائن الإشعارات
 $notification = new Notification($db);
@@ -86,14 +16,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_message'
         $identifier = htmlspecialchars($_POST['user_identifier']);
         $message = htmlspecialchars($_POST['notification_message']);
 
-        if (empty($message) || empty($identifier)) {
-            throw new Exception("الرجاء إدخال نص الإشعار وبيانات المستلم");
+        if (empty($message)) {
+            throw new Exception("الرجاء إدخال نص الإشعار");
         }
 
-        $userID = $notification->getUserIDByEmailOrID($identifier);
-        
-        if (!$userID) {
-            throw new Exception("المستخدم غير موجود");
+        if (empty($identifier)) {
+            // إرسال إشعار عام (لكل المستخدمين)
+            $userID = null;
+        } else {
+            $userID = $notification->getUserIDByEmailOrID($identifier);
+
+            if (!$userID) {
+                throw new Exception("المستخدم غير موجود");
+            }
         }
 
         $notification->addNotification($userID, $message);
@@ -119,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_notification']
 }
 
 // جلب الإشعارات
-$userID = 1; // رقم المستخدم الحالي
-$notifications = $notification->getAllNotificationsForUser($userID);
+$currentUserID = isset($_SESSION['userID']) ? $_SESSION['userID'] : null; // تحديد المستخدم الحالي
+$notifications = $notification->getAllNotifications($currentUserID);
 
 // استخراج رسائل النجاح والخطأ من الجلسة
 $success = isset($_SESSION['success']) ? $_SESSION['success'] : null;
@@ -240,8 +175,8 @@ unset($_SESSION['success'], $_SESSION['error']);
             <h2>إرسال إشعار جديد</h2>
             <form method="POST" action="">
                 <div class="form-group">
-                    <label for="user_identifier">ID المستخدم أو البريد الإلكتروني:</label>
-                    <input type="text" id="user_identifier" name="user_identifier" required>
+                    <label for="user_identifier">ID المستخدم أو البريد الإلكتروني (اتركه فارغاً لإرسال إشعار عام):</label>
+                    <input type="text" id="user_identifier" name="user_identifier">
                 </div>
                 <div class="form-group">
                     <label for="notification_message">رسالة الإشعار:</label>
