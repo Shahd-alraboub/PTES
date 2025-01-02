@@ -1,14 +1,14 @@
 <?php
-session_start();
-include 'includes/Database.php';
-include 'Notification.php';
+include '../includes/Database.php';
+include "NotificationFa.php";
+
 
 // تهيئة الاتصال بقاعدة البيانات
 $database = new Database();
 $db = $database->getConnection();
 
-// إنشاء كائن الإشعارات
-$notification = new Notification($db);
+// إنشاء كائن الإشعارات باستخدام المصنع
+$notification = NotificationFactory::createNotification($db);
 
 // معالجة إرسال الإشعار
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_message'])) {

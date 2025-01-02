@@ -166,7 +166,7 @@ $stmt->execute();
         <a href="main.php">الرئيسية</a>
         <a href="../events/event_viwe.php">الفعاليات</a>
         <a href="../booking/ticket_viwe.php">تذاكري</a>
-        <a href="../view_notifications.php">الاشعارات</a>
+        <a href="../Notifications//view_notifications.php">الاشعارات</a>
         <a href="../viwo_gif.php">الهدايا</a>
         <a href="../auth/login.php">تسجيل دخول</a>
         <a href="../auth/logout.php">تسجيل خروج</a>

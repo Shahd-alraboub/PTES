@@ -1,16 +1,13 @@
 <?php
 session_start();
-include '../includes/Database.php';
-include 'Notification.php';
+require_once '../includes/Database.php';
+require_once 'NotificationFa.php';
 
-// تهيئة الاتصال بقاعدة البيانات
 $database = new Database();
 $db = $database->getConnection();
+//الانشاء
+$notification = NotificationFactory::createNotification($db);
 
-// إنشاء كائن الإشعارات
-$notification = new Notification($db);
-
-// معالجة إرسال الإشعار
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_message'])) {
     try {
         $identifier = htmlspecialchars($_POST['user_identifier']);
@@ -20,8 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_message'
             throw new Exception("الرجاء إدخال نص الإشعار");
         }
 
-        if (empty($identifier)) {
-            // إرسال إشعار عام (لكل المستخدمين)
+        if (empty($identifier)) {+
             $userID = null;
         } else {
             $userID = $notification->getUserIDByEmailOrID($identifier);
@@ -40,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_message'
     }
 }
 
-// معالجة حذف الإشعار
+//  حذف الإشعار
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_notification'])) {
     try {
         $notificationID = (int) $_POST['delete_notification'];
@@ -57,11 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_notification']
 $currentUserID = isset($_SESSION['userID']) ? $_SESSION['userID'] : null; // تحديد المستخدم الحالي
 $notifications = $notification->getAllNotifications($currentUserID);
 
-// استخراج رسائل النجاح والخطأ من الجلسة
 $success = isset($_SESSION['success']) ? $_SESSION['success'] : null;
 $error = isset($_SESSION['error']) ? $_SESSION['error'] : null;
 unset($_SESSION['success'], $_SESSION['error']);
 ?>
+
 
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
